@@ -22,8 +22,9 @@ android {
 
     defaultConfig {
         applicationId = "rs.ruffle"
-        // Android 5.0. See README.md for what runs on which Android version.
-        minSdk = 21
+        // Android 6.0: the AndroidX libraries need it. (The native code itself, built for
+        // API 21 below, and the GameActivity glue also work on Android 5.)
+        minSdk = 23
         targetSdk = 37
         versionCode = 261116
         versionName = "0.261116"
@@ -171,6 +172,7 @@ if (System.getenv("GITHUB_ACTIONS") != null) {
 cargoNdk {
     module = "."
     // Must not be higher than minSdk, or the native library won't load on older versions.
+    // (Lower is fine: the same native code then also runs on older ones.)
     apiLevel = 21
     buildType = "release"
 

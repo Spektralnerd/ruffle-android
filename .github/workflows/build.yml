@@ -153,8 +153,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # 21 is the oldest supported version (Android 5.0).
-        api-level: [21, 26, 36]
+        # 23 is the oldest supported version (Android 6.0).
+        api-level: [23, 26, 36]
 
     steps:
       - uses: actions/checkout@v7

@@ -24,10 +24,13 @@ You can try this app by downloading and installing one of those.
 
 # Supported Android versions
 
-Android 5.0 (API 21) and newer, on devices with OpenGL ES 3.0 graphics (which most devices
-from 2013 on have). Ruffle's renderer needs OpenGL ES 3.0, so it can't run on older devices, nor
-on Android versions before 5.0. Sound is played with AAudio on Android 8.1 and newer, and with
-OpenSL ES before that.
+Android 6.0 (API 23) and newer, on devices with OpenGL ES 3.0 graphics (which most devices
+from 2013 on have). Sound is played with AAudio on Android 8.1 and newer, and with OpenSL ES
+before that.
+
+Ruffle's renderer needs OpenGL ES 3.0, so older devices can't be supported. The native part of
+the app also works on Android 5.0/5.1 (API 21/22), but the AndroidX libraries the user interface
+is built with require 6.0 in their current versions.
 
 # Controls
 
@@ -74,7 +77,7 @@ In no particular order:
     dialog instead of crashing, and the crash screen can copy or share its report
 - [X] Loading "animation" (spinner)
 - [X] Alternative audio backend (OpenSL ES) for Android < 8
-  - AAudio is loaded at runtime now, so the app also starts on older versions: Android 5.0+
+  - AAudio is loaded at runtime now, so the app also starts on older versions: Android 6.0+
 - [X] Proper storage backend?
   - Saves no longer depend on the `content://` URL a file was opened with, which can change,
     and they are written when the app goes to the background
