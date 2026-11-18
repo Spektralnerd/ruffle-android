@@ -2778,6 +2778,7 @@ dependencies = [
  "async-task",
  "backtrace",
  "jni",
+ "libc",
  "log",
  "ndk",
  "ruffle_common",

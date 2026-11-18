@@ -30,7 +30,10 @@ rustls-platform-verifier = "0.7.1"
 # ruffle_frontend_utils' `rustls-tls` doesn't include a crypto provider for reqwest,
 # so we have to install one. Using `ring`, because `aws-lc-rs` needs CMake to build.
 rustls = { version = "0.23.45", default-features = false, features = ["ring", "std"] }
-ndk = { version = "0.9.0", features = ["audio"] }
+ndk = "0.9.0"
+# For loading AAudio and OpenSL ES at runtime (dlopen), so the library also loads
+# on Android versions that don't have AAudio.
+libc = "0.2"
 
 # Have to follow Ruffle with this.
 wgpu = "30.0.1"
