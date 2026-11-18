@@ -329,13 +329,15 @@ class PlayerActivity : GameActivity() {
         }
     }
 
+    // Back only arrives as a key event before Android 16 (or without predictive back), and
+    // GameActivity would hand it to the movie, which doesn't use it, so the player couldn't be
+    // left with it. It's passed on to the back callbacks instead.
+    @SuppressLint("GestureBackNavigation")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         when (event.keyCode) {
-            // GameActivity passes Back to the movie, which doesn't use it, so the player
-            // couldn't be left with it.
             KeyEvent.KEYCODE_BACK -> {
                 if (event.action == KeyEvent.ACTION_UP && !event.isCanceled) {
-                    finish()
+                    onBackPressedDispatcher.onBackPressed()
                 }
                 return true
             }
