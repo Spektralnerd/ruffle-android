@@ -43,6 +43,9 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           shared-key: ${{ matrix.rust-target }}
+          # Bumped when the patched GameActivity sources were added (vendor/android-games-sdk),
+          # because android-activity's build script doesn't notice the switch to them.
+          prefix-key: v1-rust
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Install cargo-ndk
@@ -63,7 +66,7 @@ jobs:
       - name: Build native libs
         run: |
           unset ANDROID_SDK_ROOT # Deprecated, will cause an error if left set.
-          cargo ndk --target ${{ matrix.android-abi }} --platform 26 -o jniLibs build --release --features jpegxr
+          cargo ndk --target ${{ matrix.android-abi }} --platform 21 -o jniLibs build --release --features jpegxr
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
           ANDROID_NDK_ROOT: ${{ steps.setup-ndk.outputs.ndk-path }}
@@ -150,7 +153,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        api-level: [26, 36]
+        # 21 is the oldest supported version (Android 5.0).
+        api-level: [21, 26, 36]
 
     steps:
       - uses: actions/checkout@v7

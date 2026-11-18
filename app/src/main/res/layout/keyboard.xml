@@ -16,6 +16,18 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <ProgressBar
+        android:id="@+id/loading"
+        style="?android:attr/progressBarStyleLarge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/loading"
+        android:indeterminate="true"
+        app:layout_constraintBottom_toTopOf="@+id/keyboard"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <LinearLayout
         android:id="@+id/keyboard"
         android:layout_width="0dp"
@@ -416,14 +428,24 @@
             android:id="@+id/button_kb"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:contentDescription="@string/toggle_keys"
             android:tag="kb"
             android:text="⌨" />
+
+        <Button
+            android:id="@+id/button_ime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/show_soft_keyboard"
+            android:tag="ime"
+            android:text="Aa" />
 
         <Button
             android:id="@+id/button_cm"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:checkable="true"
+            android:contentDescription="@string/context_menu"
             android:tag="cm"
             android:text="▤" />
 

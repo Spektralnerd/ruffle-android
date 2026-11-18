@@ -1,9 +1,16 @@
 package rs.ruffle
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
 import android.content.res.Configuration
+import android.os.Build
+import android.widget.Toast
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -12,17 +19,22 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import rs.ruffle.ui.theme.RuffleTheme
 
 @Composable
 fun PanicScreen(message: String) {
+    val context = LocalContext.current
+    val copied = stringResource(id = R.string.copied)
     Scaffold { innerPadding ->
         Column(
             modifier = Modifier
@@ -35,8 +47,30 @@ fun PanicScreen(message: String) {
                     .fillMaxWidth()
                     .wrapContentSize(align = Alignment.Center),
                 style = MaterialTheme.typography.headlineLarge,
-                text = "Ruffle Panicked :("
+                text = stringResource(id = R.string.panic_title)
             )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentSize(align = Alignment.Center)
+                    .padding(top = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        copyToClipboard(context, message)
+                        // Android 13+ confirms copying by itself.
+                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                            Toast.makeText(context, copied, Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                ) {
+                    Text(text = stringResource(id = R.string.copy))
+                }
+                OutlinedButton(onClick = { share(context, message) }) {
+                    Text(text = stringResource(id = R.string.share))
+                }
+            }
             SelectionContainer {
                 Text(
                     modifier = Modifier
@@ -50,6 +84,19 @@ fun PanicScreen(message: String) {
             }
         }
     }
+}
+
+private fun copyToClipboard(context: Context, text: String) {
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+    clipboard?.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.panic_title), text))
+}
+
+private fun share(context: Context, text: String) {
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, text)
+    }
+    context.startActivity(Intent.createChooser(intent, null))
 }
 
 @Preview(name = "Panic - Light", uiMode = Configuration.UI_MODE_NIGHT_NO)

@@ -14,6 +14,7 @@ object Destinations {
 @Composable
 fun RuffleNavHost(
     navController: NavHostController = rememberNavController(),
+    recentFiles: RecentFiles,
     openSwf: (uri: Uri) -> Unit
 ) {
     NavHost(
@@ -22,6 +23,7 @@ fun RuffleNavHost(
     ) {
         composable(Destinations.SELECT_SWF_ROUTE) {
             SelectSwfRoute(
+                recentFiles = recentFiles,
                 openSwf = openSwf
             )
         }

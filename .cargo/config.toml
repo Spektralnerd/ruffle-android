@@ -1,0 +1,4 @@
+[env]
+# Build android-activity's GameActivity glue from our patched copy, which also runs on
+# Android 5.0 - 6.0 (API 21 - 23). See vendor/android-games-sdk/README.md.
+ANDROID_GAMES_SDK = { value = "vendor/android-games-sdk", relative = true }

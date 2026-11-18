@@ -1,13 +1,18 @@
 package rs.ruffle
 
 import android.annotation.SuppressLint
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
 import android.os.Build.VERSION_CODES
 import android.os.Bundle
+import android.provider.OpenableColumns
 import android.util.Log
+import android.view.KeyEvent
 import android.view.Menu
 import android.view.MenuItem
 import android.view.MotionEvent
@@ -17,17 +22,21 @@ import android.view.Window
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.PopupMenu
+import androidx.appcompat.app.AlertDialog
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.google.androidgamesdk.GameActivity
-import java.io.DataInputStream
 import java.io.File
-import java.io.IOException
 
 class PlayerActivity : GameActivity() {
+    private var clipboard: ClipboardManager? = null
+
+    /** An error dialog is (or was) shown, after which the player closes. */
+    private var errorShown = false
+
     @Suppress("unused")
     // Used by Rust
     private val swfBytes: ByteArray?
@@ -35,16 +44,11 @@ class PlayerActivity : GameActivity() {
             val uri = intent.data
             if (uri?.scheme == "content") {
                 try {
-                    contentResolver.openInputStream(uri).use { inputStream ->
-                        if (inputStream == null) {
-                            return null
-                        }
-                        val bytes = ByteArray(inputStream.available())
-                        val dataInputStream = DataInputStream(inputStream)
-                        dataInputStream.readFully(bytes)
-                        return bytes
-                    }
-                } catch (ignored: IOException) {
+                    // (InputStream.available() is not the size of the file.)
+                    return contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                } catch (e: Exception) {
+                    // E.g. the permission to read it is gone. Rust then reports the error.
+                    Log.w("ruffle", "Couldn't read $uri", e)
                 }
             }
             return null
@@ -56,6 +60,23 @@ class PlayerActivity : GameActivity() {
         get() {
             return intent.dataString
         }
+
+    /** The file name of a movie opened from a `content://` URI, if there is one. */
+    @Suppress("unused")
+    // Used by Rust
+    private fun getSwfDisplayName(): String? {
+        val uri = intent.data ?: return null
+        if (uri.scheme != "content") {
+            return null
+        }
+        return try {
+            contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+                ?.use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
+        } catch (e: Exception) {
+            Log.w("ruffle", "Couldn't get the name of $uri", e)
+            null
+        }
+    }
 
     @Suppress("unused")
     // Used by Rust
@@ -99,6 +120,7 @@ class PlayerActivity : GameActivity() {
     private external fun requestContextMenu()
     private external fun runContextMenuCallback(index: Int)
     private external fun clearContextMenu()
+    private external fun showSoftKeyboard()
 
     @Suppress("unused")
     // Used by Rust
@@ -125,7 +147,7 @@ class PlayerActivity : GameActivity() {
                 }
             }
             val exitItemId: Int = items.size
-            menu.add(group, exitItemId, Menu.NONE, "Exit")
+            menu.add(group, exitItemId, Menu.NONE, R.string.exit)
             popup.setOnMenuItemClickListener { item: MenuItem ->
                 if (item.itemId == exitItemId) {
                     finish()
@@ -149,6 +171,85 @@ class PlayerActivity : GameActivity() {
             storageDir.mkdirs()
         }
         return storageDirPath
+    }
+
+    /** The movie is loaded, so the loading indicator can go. */
+    @Suppress("unused")
+    // Used by Rust
+    private fun onMovieLoaded() {
+        runOnUiThread { findViewById<View>(R.id.loading)?.visibility = View.GONE }
+    }
+
+    /**
+     * Explains why the movie can't be played, and closes the player afterwards.
+     * [kind] is one of the `ERROR_` constants, [details] the technical error message.
+     */
+    @Suppress("unused")
+    // Used by Rust
+    private fun showError(kind: Int, details: String) {
+        runOnUiThread {
+            if (errorShown || isFinishing) {
+                return@runOnUiThread
+            }
+            errorShown = true
+            findViewById<View>(R.id.loading)?.visibility = View.GONE
+            val title = when (kind) {
+                ERROR_INVALID_MOVIE -> R.string.error_invalid_movie_title
+                ERROR_RENDERER_FAILED -> R.string.error_renderer_title
+                else -> R.string.error_load_failed_title
+            }
+            val message = when (kind) {
+                ERROR_INVALID_MOVIE -> R.string.error_invalid_movie
+                ERROR_RENDERER_FAILED -> R.string.error_renderer
+                else -> R.string.error_load_failed
+            }
+            AlertDialog.Builder(this)
+                .setTitle(title)
+                .setMessage(getString(message, details))
+                .setPositiveButton(R.string.close) { _, _ -> finish() }
+                .setOnCancelListener { finish() }
+                .show()
+        }
+    }
+
+    /** A message from the movie. */
+    @Suppress("unused")
+    // Used by Rust
+    private fun showMessage(message: String) {
+        runOnUiThread {
+            if (!isFinishing) {
+                AlertDialog.Builder(this)
+                    .setMessage(message)
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show()
+            }
+        }
+    }
+
+    @Suppress("unused")
+    // Used by Rust
+    private fun getClipboardText(): String {
+        return try {
+            val clip = clipboard?.primaryClip
+            if (clip != null && clip.itemCount > 0) {
+                clip.getItemAt(0).coerceToText(this).toString()
+            } else {
+                ""
+            }
+        } catch (e: Exception) {
+            Log.w("ruffle", "Couldn't read the clipboard", e)
+            ""
+        }
+    }
+
+    @Suppress("unused")
+    // Used by Rust
+    private fun setClipboardText(text: String) {
+        try {
+            clipboard?.setPrimaryClip(ClipData.newPlainText(getString(R.string.app_name), text))
+        } catch (e: Exception) {
+            Log.w("ruffle", "Couldn't write to the clipboard", e)
+        }
     }
 
     override fun onCreateSurfaceView() {
@@ -184,27 +285,76 @@ class PlayerActivity : GameActivity() {
                 false
             }
         }
+        val keyboard = layout.getViewById(R.id.keyboard)
+        keyboard.visibility = if (isLandscape(resources.configuration)) View.GONE else View.VISIBLE
         layout.findViewById<View>(R.id.button_kb).setOnClickListener {
-            val keyboard = layout.getViewById(R.id.keyboard)
             if (keyboard.visibility == View.VISIBLE) {
                 keyboard.visibility = View.GONE
             } else {
                 keyboard.visibility = View.VISIBLE
             }
         }
+        layout.findViewById<View>(R.id.button_ime).setOnClickListener { showSoftKeyboard() }
         layout.findViewById<View>(R.id.button_cm)
             .setOnClickListener { requestContextMenu() }
         layout.requestLayout()
         layout.requestFocus()
         mSurfaceView.holder.addCallback(this)
         ViewCompat.setOnApplyWindowInsetsListener(mSurfaceView, this)
+        // Keep the movie and the buttons away from display cutouts (notches, camera holes),
+        // and above the soft keyboard. The insets are passed on unchanged, so that the
+        // surface view's own listener (GameActivity's) still gets them.
+        ViewCompat.setOnApplyWindowInsetsListener(layout) { view, insets ->
+            val cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            view.setPadding(
+                cutout.left,
+                cutout.top,
+                cutout.right,
+                maxOf(cutout.bottom, ime.bottom)
+            )
+            insets
+        }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         val keyboard = findViewById<View>(R.id.keyboard)
-        val isLandscape = newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE
-        keyboard.visibility = if (isLandscape) View.GONE else View.VISIBLE
+        keyboard.visibility = if (isLandscape(newConfig)) View.GONE else View.VISIBLE
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            // Dialogs, menus and the soft keyboard can bring the system bars back.
+            hideSystemUI()
+        }
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        when (event.keyCode) {
+            // GameActivity passes Back to the movie, which doesn't use it, so the player
+            // couldn't be left with it.
+            KeyEvent.KEYCODE_BACK -> {
+                if (event.action == KeyEvent.ACTION_UP && !event.isCanceled) {
+                    finish()
+                }
+                return true
+            }
+            // While the soft keyboard is active, GameTextInput handles these keys using an
+            // API 24 method, which crashes the app on older versions. Give them straight to
+            // the player there; it deletes the text in the movie by itself.
+            KeyEvent.KEYCODE_DEL, KeyEvent.KEYCODE_FORWARD_DEL -> {
+                if (Build.VERSION.SDK_INT < VERSION_CODES.N) {
+                    return when (event.action) {
+                        KeyEvent.ACTION_DOWN -> onKeyDown(event.keyCode, event)
+                        KeyEvent.ACTION_UP -> onKeyUp(event.keyCode, event)
+                        else -> true
+                    }
+                }
+            }
+        }
+        return super.dispatchKeyEvent(event)
     }
 
     private fun hideSystemUI() {
@@ -213,6 +363,9 @@ class PlayerActivity : GameActivity() {
         if (Build.VERSION.SDK_INT >= VERSION_CODES.R) {
             window.attributes.layoutInDisplayCutoutMode =
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+        } else if (Build.VERSION.SDK_INT >= VERSION_CODES.P) {
+            window.attributes.layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         }
         // From API 30 onwards, this is the recommended way to hide the system UI, rather than
         // using View.setSystemUiVisibility.
@@ -235,7 +388,10 @@ class PlayerActivity : GameActivity() {
                     putExtra("message", message)
                 }
             )
+            // The player can't continue after this.
+            runOnUiThread { finish() }
         }
+        clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
         // When true, the app will fit inside any system UI windows.
         // When false, we render behind any system UI windows.
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -267,6 +423,10 @@ class PlayerActivity : GameActivity() {
     }
 
     companion object {
+        // Error kinds for showError(), see `ErrorKind` in src/ui.rs.
+        private const val ERROR_INVALID_MOVIE = 1
+        private const val ERROR_RENDERER_FAILED = 2
+
         init {
             // load the native activity
             System.loadLibrary("ruffle_android")
@@ -274,6 +434,9 @@ class PlayerActivity : GameActivity() {
 
         @JvmStatic
         private external fun nativeInit(crashCallback: CrashCallback)
+
+        private fun isLandscape(configuration: Configuration) =
+            configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
         private fun <T> gatherAllDescendantsOfType(v: View, t: Class<*>): List<T> {
             val result: MutableList<T> = ArrayList()

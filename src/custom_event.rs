@@ -15,4 +15,10 @@ pub enum RuffleEvent {
     RunContextMenuCallback(usize),
     ClearContextMenu,
     RequestContextMenu,
+    /// The root movie was loaded and is about to start playing.
+    RootMovieLoaded,
+    /// Show (`true`) or hide (`false`) the soft keyboard.
+    SoftKeyboard(bool),
+    /// The user asked for the soft keyboard (toolbar button), e.g. to play with it.
+    ShowSoftKeyboard,
 }

@@ -22,7 +22,8 @@ android {
 
     defaultConfig {
         applicationId = "rs.ruffle"
-        minSdk = 26
+        // Android 5.0. See README.md for what runs on which Android version.
+        minSdk = 21
         targetSdk = 37
         versionCode = 261116
         versionName = "0.261116"
@@ -169,7 +170,8 @@ if (System.getenv("GITHUB_ACTIONS") != null) {
 
 cargoNdk {
     module = "."
-    apiLevel = 26
+    // Must not be higher than minSdk, or the native library won't load on older versions.
+    apiLevel = 21
     buildType = "release"
 
     localProperties.getProperty("ndkTargets")?.let { ndkTargets ->

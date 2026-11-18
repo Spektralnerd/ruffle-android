@@ -22,6 +22,37 @@ You can try this app by downloading and installing one of those.
 
 - The `universal` version should work on all 4 of the above architectures, but it's _huge_.
 
+# Supported Android versions
+
+Android 5.0 (API 21) and newer, on devices with OpenGL ES 3.0 graphics (which most devices
+from 2013 on have). Ruffle's renderer needs OpenGL ES 3.0, so it can't run on older devices, nor
+on Android versions before 5.0. Sound is played with AAudio on Android 8.1 and newer, and with
+OpenSL ES before that.
+
+# Controls
+
+- Touching the screen acts as the (left) mouse button. A mouse or touchpad also works, including
+  the right button and the wheel.
+- **⌨** shows or hides the on-screen keys (digits, letters, arrows, Space, Ctrl, Alt). They are
+  hidden in landscape at first.
+- **Aa** opens the system's keyboard, to type text or to play with it. It also opens by itself
+  when an editable text field in the movie is tapped.
+- **▤** opens the context menu of the movie, with an "Exit" item. Back closes the player too.
+- Physical keyboards work as usual.
+- Gamepads: the D-pad and the left stick act as the arrow keys, and the buttons are pressed as
+  these keys:
+
+  | Button | Key   |    | Button | Key    |
+  |--------|-------|----|--------|--------|
+  | A      | Space |    | L1     | Shift  |
+  | B      | X     |    | R1     | Ctrl   |
+  | X      | Z     |    | L2     | Q      |
+  | Y      | C     |    | R2     | E      |
+  | Start  | Enter |    | Select | Escape |
+
+Saved games (SharedObjects) of files opened with the file picker are kept per file name, so they
+are found again when the same file is opened later, also from the list of recent files.
+
 # Building from source
 
 Please see [CONTRIBUTING.md](CONTRIBUTING.md#building-from-source) for details about how to build this repository yourself.
@@ -32,20 +63,29 @@ Please see [CONTRIBUTING.md](CONTRIBUTING.md#building-from-source) for details a
 
 In no particular order:
 
-- [ ] Ability to show the built-in virtual keyboard (softinput), for text input
-- [ ] Controller/Gamepad input?
-  - Mapped to key presses and/or virtual mouse pointer
+- [X] Ability to show the built-in virtual keyboard (softinput), for text input
+  - Opens when an editable text field gets the focus, and with the "Aa" button
+- [X] Controller/Gamepad input?
+  - Mapped to key presses (see [Controls](#controls)), no virtual mouse pointer (yet)
 - [ ] Own custom keyboard overlay, maybe even per-content configs
   - Not an overlay, and not per-content, but custom keyboard is there
-- [ ] Error/panic handling
-- [ ] Loading "animation" (spinner)
-- [ ] Alternative audio backend (OpenSL ES) for Android < 8
-- [ ] Proper storage backend?
-- [ ] Resolve design glitches/styling/theming (immersive mode, window insets for holes/notches/corners)
+- [X] Error/panic handling
+  - Movies that can't be loaded, invalid files and unsupported graphics are explained in a
+    dialog instead of crashing, and the crash screen can copy or share its report
+- [X] Loading "animation" (spinner)
+- [X] Alternative audio backend (OpenSL ES) for Android < 8
+  - AAudio is loaded at runtime now, so the app also starts on older versions: Android 5.0+
+- [X] Proper storage backend?
+  - Saves no longer depend on the `content://` URL a file was opened with, which can change,
+    and they are written when the app goes to the background
+- [X] Resolve design glitches/styling/theming (immersive mode, window insets for holes/notches/corners)
+  - The movie and the buttons stay clear of notches and camera holes, and above the soft
+    keyboard; the system bars are hidden again after dialogs. Rounded corners aren't handled.
 - [ ] Publish to various app stores, maybe automatically?
 - [ ] Bundle demo animations/games
 - [ ] Add ability to load content from well known online collections? (well maybe not z0r... unless?)
-- [ ] History, favorites, other flair...?
+- [X] History, favorites, other flair...?
+  - Recently opened movies on the start screen, with favorites (★) kept at the top
 
 ### DONE:
 

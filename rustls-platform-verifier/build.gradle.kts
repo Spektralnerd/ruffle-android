@@ -20,7 +20,8 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        minSdk = 26
+        // Upstream declares 22, but uses nothing newer than API 21 without a version check.
+        minSdk = 21
 
         // Only used by upstream's own tests.
         buildConfigField("boolean", "TEST", "false")

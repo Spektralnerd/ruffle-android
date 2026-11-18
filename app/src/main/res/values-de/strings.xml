@@ -1,0 +1,33 @@
+<resources>
+    <string name="app_name">Ruffle</string>
+    <string name="logo_description">Ruffle-Logo</string>
+    <string name="or">oder</string>
+    <string name="open_url">URL öffnen</string>
+    <string name="select_a_swf">SWF-Datei auswählen</string>
+    <string name="url">URL</string>
+    <string name="work_in_progress_warning">Diese App ist noch in Arbeit. Manche Funktionen fehlen vielleicht noch!</string>
+
+    <string name="recent">Zuletzt geöffnet</string>
+    <string name="clear_history">Leeren</string>
+    <string name="add_favorite">Zu den Favoriten</string>
+    <string name="remove_favorite">Aus den Favoriten entfernen</string>
+    <string name="remove_from_list">Aus der Liste entfernen</string>
+
+    <string name="loading">Wird geladen…</string>
+    <string name="show_soft_keyboard">Tastatur anzeigen</string>
+    <string name="toggle_keys">Bildschirmtasten ein- oder ausblenden</string>
+    <string name="context_menu">Menü</string>
+    <string name="exit">Beenden</string>
+    <string name="close">Schließen</string>
+    <string name="error_load_failed_title">Film konnte nicht geladen werden</string>
+    <string name="error_load_failed">Der Film konnte nicht geöffnet oder heruntergeladen werden.\n\nDetails: %1$s</string>
+    <string name="error_invalid_movie_title">Kein Flash-Film</string>
+    <string name="error_invalid_movie">Ruffle kann diese Datei nicht lesen. Wahrscheinlich ist es keine (gültige) SWF-Datei.\n\nDetails: %1$s</string>
+    <string name="error_renderer_title">Grafik wird nicht unterstützt</string>
+    <string name="error_renderer">Ruffle braucht OpenGL ES 3.0, und das unterstützt dieses Gerät anscheinend nicht.\n\nDetails: %1$s</string>
+
+    <string name="panic_title">Ruffle ist abgestürzt :(</string>
+    <string name="copy">Kopieren</string>
+    <string name="copied">Kopiert</string>
+    <string name="share">Teilen</string>
+</resources>

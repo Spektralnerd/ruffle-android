@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Ruffle</string>
     <string name="logo_description">Ruffle Logo</string>
@@ -6,4 +7,28 @@
     <string name="select_a_swf">选择本地swf文件</string>
     <string name="url">请输入网页链接</string>
     <string name="work_in_progress_warning">这款应用还在开发中，一些功能可能尚未实现！</string>
+
+    <string name="recent">最近打开</string>
+    <string name="clear_history">清除</string>
+    <string name="add_favorite">加入收藏</string>
+    <string name="remove_favorite">取消收藏</string>
+    <string name="remove_from_list">从列表中移除</string>
+
+    <string name="loading">正在加载…</string>
+    <string name="show_soft_keyboard">显示键盘</string>
+    <string name="toggle_keys">显示或隐藏屏幕按键</string>
+    <string name="context_menu">菜单</string>
+    <string name="exit">退出</string>
+    <string name="close">关闭</string>
+    <string name="error_load_failed_title">影片加载失败</string>
+    <string name="error_load_failed">无法打开或下载该影片。\n\n详细信息：%1$s</string>
+    <string name="error_invalid_movie_title">不是 Flash 影片</string>
+    <string name="error_invalid_movie">Ruffle 无法读取此文件，它很可能不是有效的 SWF 文件。\n\n详细信息：%1$s</string>
+    <string name="error_renderer_title">不支持的图形功能</string>
+    <string name="error_renderer">Ruffle 需要 OpenGL ES 3.0，但此设备似乎不支持。\n\n详细信息：%1$s</string>
+
+    <string name="panic_title">Ruffle 崩溃了 :(</string>
+    <string name="copy">复制</string>
+    <string name="copied">已复制</string>
+    <string name="share">分享</string>
 </resources>

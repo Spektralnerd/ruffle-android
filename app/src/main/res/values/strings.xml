@@ -6,4 +6,31 @@
     <string name="select_a_swf">Select a SWF</string>
     <string name="url">URL</string>
     <string name="work_in_progress_warning">This app is a work in progress. Some functionality may not be implemented yet!</string>
+
+    <!-- Launcher: recently opened movies -->
+    <string name="recent">Recent</string>
+    <string name="clear_history">Clear</string>
+    <string name="add_favorite">Add to favorites</string>
+    <string name="remove_favorite">Remove from favorites</string>
+    <string name="remove_from_list">Remove from list</string>
+
+    <!-- Player -->
+    <string name="loading">Loading…</string>
+    <string name="show_soft_keyboard">Show keyboard</string>
+    <string name="toggle_keys">Show or hide the on-screen keys</string>
+    <string name="context_menu">Menu</string>
+    <string name="exit">Exit</string>
+    <string name="close">Close</string>
+    <string name="error_load_failed_title">Movie failed to load</string>
+    <string name="error_load_failed">The movie could not be opened or downloaded.\n\nDetails: %1$s</string>
+    <string name="error_invalid_movie_title">Not a Flash movie</string>
+    <string name="error_invalid_movie">Ruffle can\'t read this file. Most likely it isn\'t a (valid) SWF file.\n\nDetails: %1$s</string>
+    <string name="error_renderer_title">Graphics not supported</string>
+    <string name="error_renderer">Ruffle needs OpenGL ES 3.0, which this device doesn\'t seem to support.\n\nDetails: %1$s</string>
+
+    <!-- Crash screen -->
+    <string name="panic_title">Ruffle Panicked :(</string>
+    <string name="copy">Copy</string>
+    <string name="copied">Copied</string>
+    <string name="share">Share</string>
 </resources>

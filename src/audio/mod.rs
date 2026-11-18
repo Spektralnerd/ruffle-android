@@ -6,7 +6,7 @@ use ruffle_core::backend::audio::{
 
 use ruffle_core::impl_audio_mixer_backend;
 
-pub struct AAudioAudioBackend {
+pub struct AndroidAudioBackend {
     pub stream: Option<AudioStream>,
     pub mixer: AudioMixer,
     pub paused: bool,
@@ -14,8 +14,8 @@ pub struct AAudioAudioBackend {
 
 type Error = Box<dyn std::error::Error>;
 
-impl AAudioAudioBackend {
-    pub fn new() -> Result<Self, Error> {
+impl AndroidAudioBackend {
+    pub fn new(_sdk_version: i32) -> Result<Self, Error> {
         let mixer = AudioMixer::new(2, 44100);
 
         let mut result = Self {
@@ -64,7 +64,7 @@ impl AAudioAudioBackend {
     }
 }
 
-impl AudioBackend for AAudioAudioBackend {
+impl AudioBackend for AndroidAudioBackend {
     impl_audio_mixer_backend!(mixer);
 
     fn play(&mut self) {
