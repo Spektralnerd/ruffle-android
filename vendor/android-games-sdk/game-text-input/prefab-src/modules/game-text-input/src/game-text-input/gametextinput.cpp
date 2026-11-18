@@ -247,7 +247,9 @@ void GameTextInput::setStateInner(const GameTextInputState& state) {
                                  static_cast<uint32_t>(stateStringBuffer_.size()));
     currentState_.text_UTF8 = stateStringBuffer_.data();
     std::copy(state.text_UTF8, state.text_UTF8 + bytes_needed - 1, stateStringBuffer_.data());
-    currentState_.text_length = state.text_length;
+    // ruffle-android: the length of what was copied, not of the original text, which may be
+    // longer than the buffer (it was read past the end of the buffer then).
+    currentState_.text_length = bytes_needed - 1;
     currentState_.selection = state.selection;
     currentState_.composingRegion = state.composingRegion;
     stateStringBuffer_[bytes_needed - 1] = 0;
