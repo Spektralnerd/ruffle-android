@@ -9,7 +9,6 @@ use ruffle_core::backend::ui::{
 };
 use ruffle_core::font::FontQuery;
 use std::cell::Cell;
-use std::time::{Duration, Instant};
 use url::Url;
 
 /// The kinds of errors `PlayerActivity.showError()` knows how to explain to the user.
@@ -60,15 +59,11 @@ pub struct AndroidUiBackend {
     event_sender: EventSender,
     language: LanguageIdentifier,
     mouse_visible: bool,
-    /// When the soft keyboard was last requested for a focused text field; `None` if it isn't.
-    keyboard_requested_at: Cell<Option<Instant>>,
+    /// Whether the soft keyboard is open for a focused text field.
+    keyboard_requested: Cell<bool>,
 }
 
 impl AndroidUiBackend {
-    /// Ruffle asks for the keyboard again on every focus update, which can happen each frame.
-    /// Repeating the request is only needed if the user closed the keyboard in the meantime.
-    const KEYBOARD_REQUEST_INTERVAL: Duration = Duration::from_millis(300);
-
     pub fn new(app: AndroidApp, event_sender: EventSender) -> Self {
         let language = system_language(&app);
         Self {
@@ -76,8 +71,14 @@ impl AndroidUiBackend {
             event_sender,
             language,
             mouse_visible: true,
-            keyboard_requested_at: Cell::new(None),
+            keyboard_requested: Cell::new(false),
         }
+    }
+
+    /// The user closed the soft keyboard, so it has to be opened again the next time a text
+    /// field asks for it (e.g. when it is tapped again).
+    pub fn soft_keyboard_hidden(&self) {
+        self.keyboard_requested.set(false);
     }
 }
 
@@ -129,13 +130,9 @@ impl UiBackend for AndroidUiBackend {
     }
 
     fn open_virtual_keyboard(&self) {
-        let now = Instant::now();
-        let requested_recently = self
-            .keyboard_requested_at
-            .get()
-            .is_some_and(|at| now.duration_since(at) < Self::KEYBOARD_REQUEST_INTERVAL);
-        if !requested_recently {
-            self.keyboard_requested_at.set(Some(now));
+        // Ruffle asks again on every focus update, even without a change (which some movies
+        // cause every frame), but (re)opening the keyboard restarts its input.
+        if !self.keyboard_requested.replace(true) {
             self.event_sender.send(RuffleEvent::SoftKeyboard(true));
         }
     }
@@ -143,7 +140,7 @@ impl UiBackend for AndroidUiBackend {
     fn close_virtual_keyboard(&self) {
         // This is called on most clicks, so only act if we were the ones who opened it.
         // A keyboard opened with the toolbar button stays open (for games played with it).
-        if self.keyboard_requested_at.take().is_some() {
+        if self.keyboard_requested.replace(false) {
             self.event_sender.send(RuffleEvent::SoftKeyboard(false));
         }
     }

@@ -21,4 +21,6 @@ pub enum RuffleEvent {
     SoftKeyboard(bool),
     /// The user asked for the soft keyboard (toolbar button), e.g. to play with it.
     ShowSoftKeyboard,
+    /// The soft keyboard was closed (e.g. by the user, with Back).
+    SoftKeyboardHidden,
 }

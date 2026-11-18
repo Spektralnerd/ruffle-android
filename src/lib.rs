@@ -37,8 +37,8 @@ use std::{
 use wgpu::rwh::{AndroidDisplayHandle, HasWindowHandle, RawDisplayHandle};
 
 use android_activity::input::{
-    Axis, Button, ImeOptions, InputEvent, InputType, KeyAction, KeyEvent, KeyMapChar, MotionAction,
-    TextInputAction, TextInputState, TextSpan,
+    Axis, ImeOptions, InputEvent, InputType, KeyAction, KeyEvent, KeyMapChar, MotionAction,
+    TextInputAction, TextInputState, TextSpan, ToolType,
 };
 use android_activity::{AndroidApp, AndroidAppWaker, InputStatus, MainEvent, PollEvent};
 use backtrace::Backtrace;
@@ -67,7 +67,7 @@ use ruffle_frontend_utils::{
 
 use crate::input::ImeTextTracker;
 use crate::navigator::AndroidNavigatorInterface;
-use crate::storage::{shared_object_prefix, AndroidStorageBackend};
+use crate::storage::{AndroidStorageBackend, LegacyNames};
 use crate::trace::FileLogBackend;
 use crate::ui::{AndroidUiBackend, ErrorKind};
 use java::JavaInterface;
@@ -262,8 +262,8 @@ fn create_player(
     };
     let movie_url = movie_url_for(&swf_uri, display_name.as_deref());
     // Saves made while the movie still had its `content://` URL.
-    let legacy_prefix = if movie_url != swf_uri {
-        shared_object_prefix(&movie_url).zip(shared_object_prefix(&swf_uri))
+    let legacy_names = if movie_url != swf_uri {
+        LegacyNames::new(&movie_url, &swf_uri)
     } else {
         None
     };
@@ -296,7 +296,7 @@ fn create_player(
         .with_ui(AndroidUiBackend::new(app.clone(), sender.clone()))
         .with_storage(Box::new(AndroidStorageBackend::new(
             startup.storage_dir.clone(),
-            legacy_prefix,
+            legacy_names,
         )))
         .with_navigator(navigator)
         .with_log(FileLogBackend::new(startup.trace_output.as_deref()))
@@ -431,8 +431,24 @@ fn handle_key_event(app: &AndroidApp, player: &ActivePlayer, event: &KeyEvent) -
 }
 
 /// Replays what was typed on the soft keyboard as key presses and text input.
-fn handle_soft_keyboard_text(player: &ActivePlayer, ime: &mut ImeTextTracker, text: &str) {
-    let edit = ime.update(text);
+/// More text than this in the soft keyboard's editor is cleared, so that it can't grow without
+/// limit (GameTextInput can't handle more than 64 KiB, and the multi-line mode has no limit).
+const MAX_SOFT_KEYBOARD_TEXT: usize = 1000;
+
+fn handle_soft_keyboard_text(
+    app: &AndroidApp,
+    player: &ActivePlayer,
+    ime: &mut ImeTextTracker,
+    state: &TextInputState,
+) {
+    if state.text.len() > MAX_SOFT_KEYBOARD_TEXT && state.compose_region.is_none() {
+        // (The edit is replayed below; only the keyboard's copy of the text is cleared.)
+        app.set_text_input_state(empty_text_input_state());
+    }
+    let edit = ime.update(&state.text);
+    if state.text.len() > MAX_SOFT_KEYBOARD_TEXT && state.compose_region.is_none() {
+        ime.reset();
+    }
     if edit.backspaces == 0 && edit.inserted.is_empty() {
         return;
     }
@@ -459,14 +475,31 @@ fn handle_soft_keyboard_text(player: &ActivePlayer, ime: &mut ImeTextTracker, te
     }
 }
 
+fn empty_text_input_state() -> TextInputState {
+    TextInputState {
+        text: String::new(),
+        selection: TextSpan { start: 0, end: 0 },
+        compose_region: None,
+    }
+}
+
+/// The mouse buttons that are currently held: left, right, middle.
+type MouseButtonsHeld = [bool; 3];
+
 fn handle_motion_event(
     app: &AndroidApp,
     player: &ActivePlayer,
     window: &NativeWindow,
     event: &android_activity::input::MotionEvent,
+    mouse_buttons: &mut MouseButtonsHeld,
 ) -> InputStatus {
+    // (GameActivity only keeps the first 8 pointers.)
+    let index = event.pointer_index();
+    if index >= event.pointer_count() {
+        return InputStatus::Unhandled;
+    }
     // GameActivity reports the coordinates relative to the surface view already.
-    let pointer = event.pointer_at_index(event.pointer_index());
+    let pointer = event.pointer_at_index(index);
     let Ok((view_width, view_height)) = get_view_size(app) else {
         return InputStatus::Unhandled;
     };
@@ -476,37 +509,68 @@ fn handle_motion_event(
     let x = pointer.x() as f64 * window.width() as f64 / view_width as f64;
     let y = pointer.y() as f64 * window.height() as f64 / view_height as f64;
 
+    let mut player = player.player.lock().unwrap();
+
+    if pointer.tool_type() == ToolType::Mouse {
+        // Android sends Down/Up for whichever button is pressed first or released last, and
+        // ButtonPress/ButtonRelease (only since Android 6) for each one, so the buttons are
+        // taken from the button state of every event instead.
+        let state = event.button_state();
+        let held = if event.action() == MotionAction::Cancel {
+            [false; 3]
+        } else {
+            [state.primary(), state.secondary(), state.teriary()]
+        };
+        let buttons = [MouseButton::Left, MouseButton::Right, MouseButton::Middle];
+        for ((button, was_held), is_held) in buttons
+            .iter()
+            .copied()
+            .zip(mouse_buttons.iter_mut())
+            .zip(held)
+        {
+            if *was_held != is_held {
+                *was_held = is_held;
+                player.handle_event(if is_held {
+                    PlayerEvent::MouseDown {
+                        x,
+                        y,
+                        button,
+                        index: None,
+                    }
+                } else {
+                    PlayerEvent::MouseUp { x, y, button }
+                });
+            }
+        }
+    }
+
     let ruffle_event = match event.action() {
+        _ if pointer.tool_type() == ToolType::Mouse
+            && matches!(
+                event.action(),
+                MotionAction::Down
+                    | MotionAction::Up
+                    | MotionAction::ButtonPress
+                    | MotionAction::ButtonRelease
+                    | MotionAction::Cancel
+            ) =>
+        {
+            // Handled above.
+            return InputStatus::Handled;
+        }
         MotionAction::Down | MotionAction::PointerDown => PlayerEvent::MouseDown {
             x,
             y,
             button: MouseButton::Left,
             index: None,
         },
-        MotionAction::Up | MotionAction::PointerUp => PlayerEvent::MouseUp {
+        // A cancelled touch (e.g. taken over by a system gesture) must not leave the button
+        // held down.
+        MotionAction::Up | MotionAction::PointerUp | MotionAction::Cancel => PlayerEvent::MouseUp {
             x,
             y,
             button: MouseButton::Left,
         },
-        // A mouse also sends Down/Up for its primary button, so only the others are handled
-        // here.
-        MotionAction::ButtonPress | MotionAction::ButtonRelease => {
-            let button = match event.action_button() {
-                Button::Secondary | Button::StylusSecondary => MouseButton::Right,
-                Button::Tertiary => MouseButton::Middle,
-                _ => return InputStatus::Handled,
-            };
-            if event.action() == MotionAction::ButtonPress {
-                PlayerEvent::MouseDown {
-                    x,
-                    y,
-                    button,
-                    index: None,
-                }
-            } else {
-                PlayerEvent::MouseUp { x, y, button }
-            }
-        }
         MotionAction::Move | MotionAction::HoverMove => PlayerEvent::MouseMove { x, y },
         MotionAction::HoverExit => PlayerEvent::MouseLeave,
         MotionAction::Scroll => PlayerEvent::MouseWheel {
@@ -515,7 +579,7 @@ fn handle_motion_event(
         _ => return InputStatus::Unhandled,
     };
 
-    player.player.lock().unwrap().handle_event(ruffle_event);
+    player.handle_event(ruffle_event);
     InputStatus::Handled
 }
 
@@ -529,6 +593,7 @@ async fn run(app: AndroidApp) {
     let mut playerbox: Option<ActivePlayer> = None;
     let mut ime = ImeTextTracker::default();
     let mut soft_keyboard_open = false;
+    let mut mouse_buttons = MouseButtonsHeld::default();
     let sender = EventSender {
         sender,
         waker: app.create_waker(),
@@ -655,9 +720,13 @@ async fn run(app: AndroidApp) {
                                     let status = match input {
                                         InputEvent::MotionEvent(event) => {
                                             match native_window.as_ref() {
-                                                Some(window) => {
-                                                    handle_motion_event(&app, player, window, event)
-                                                }
+                                                Some(window) => handle_motion_event(
+                                                    &app,
+                                                    player,
+                                                    window,
+                                                    event,
+                                                    &mut mouse_buttons,
+                                                ),
                                                 None => InputStatus::Unhandled,
                                             }
                                         }
@@ -666,9 +735,7 @@ async fn run(app: AndroidApp) {
                                         }
                                         InputEvent::TextEvent(state) => {
                                             handle_soft_keyboard_text(
-                                                player,
-                                                &mut ime,
-                                                &state.text,
+                                                &app, player, &mut ime, state,
                                             );
                                             InputStatus::Handled
                                         }
@@ -767,11 +834,7 @@ async fn run(app: AndroidApp) {
                     if !soft_keyboard_open {
                         // Start with an empty text; see `ImeTextTracker`.
                         ime.reset();
-                        app.set_text_input_state(TextInputState {
-                            text: String::new(),
-                            selection: TextSpan { start: 0, end: 0 },
-                            compose_region: None,
-                        });
+                        app.set_text_input_state(empty_text_input_state());
                         soft_keyboard_open = true;
                     }
                     app.show_soft_input(false);
@@ -779,6 +842,20 @@ async fn run(app: AndroidApp) {
                 RuffleEvent::SoftKeyboard(false) => {
                     soft_keyboard_open = false;
                     app.hide_soft_input(false);
+                }
+                RuffleEvent::SoftKeyboardHidden => {
+                    // Closed by the user. GameActivity would otherwise keep sending the keys of
+                    // hardware keyboards and gamepads to the (gone) soft keyboard.
+                    soft_keyboard_open = false;
+                    app.hide_soft_input(false);
+                    if let Some(player) = playerbox.as_ref() {
+                        let mut player = player.player.lock().unwrap();
+                        if let Some(ui) =
+                            <dyn Any>::downcast_mut::<AndroidUiBackend>(player.ui_mut())
+                        {
+                            ui.soft_keyboard_hidden();
+                        }
+                    }
                 }
             }
         }
@@ -822,14 +899,19 @@ async fn run(app: AndroidApp) {
 }
 
 /// Sends an event from Java to the event loop.
+///
+/// Before the event loop started (or after it ended), the event is dropped.
 fn send_event_from_java(
     env: &mut Env,
     this: &JObject,
     event: RuffleEvent,
 ) -> jni::errors::Result<()> {
-    let sender: MutexGuard<EventSender> =
-        unsafe { env.get_rust_field(this, jni_str!("eventLoopHandle")) }?;
-    sender.send(event);
+    let sender: jni::errors::Result<MutexGuard<EventSender>> =
+        unsafe { env.get_rust_field(this, jni_str!("eventLoopHandle")) };
+    match sender {
+        Ok(sender) => sender.send(event),
+        Err(e) => log::warn!("Event loop not running, dropping an event from Java: {e}"),
+    }
     Ok(())
 }
 
@@ -950,6 +1032,17 @@ pub unsafe extern "C" fn Java_rs_ruffle_PlayerActivity_showSoftKeyboard<'local>(
 ) {
     unowned_env
         .with_env(|env| send_event_from_java(env, &this, RuffleEvent::ShowSoftKeyboard))
+        .resolve::<ThrowRuntimeExAndDefault>()
+}
+
+#[no_mangle]
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn Java_rs_ruffle_PlayerActivity_onSoftKeyboardHidden<'local>(
+    mut unowned_env: EnvUnowned<'local>,
+    this: JObject<'local>,
+) {
+    unowned_env
+        .with_env(|env| send_event_from_java(env, &this, RuffleEvent::SoftKeyboardHidden))
         .resolve::<ThrowRuntimeExAndDefault>()
 }
 

@@ -111,6 +111,7 @@ class PlayerActivity : GameActivity() {
     private external fun runContextMenuCallback(index: Int)
     private external fun clearContextMenu()
     private external fun showSoftKeyboard()
+    private external fun onSoftKeyboardHidden()
 
     @Suppress("unused")
     // Used by Rust
@@ -309,6 +310,15 @@ class PlayerActivity : GameActivity() {
         super.onConfigurationChanged(newConfig)
         val keyboard = findViewById<View>(R.id.keyboard)
         keyboard.visibility = if (isLandscape(newConfig)) View.GONE else View.VISIBLE
+    }
+
+    override fun onSoftwareKeyboardVisibilityChanged(visible: Boolean) {
+        super.onSoftwareKeyboardVisibilityChanged(visible)
+        if (!visible) {
+            // E.g. closed with Back. Otherwise the keys of hardware keyboards and gamepads
+            // would keep going to it.
+            onSoftKeyboardHidden()
+        }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
