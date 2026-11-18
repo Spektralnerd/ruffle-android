@@ -228,18 +228,16 @@ class PlayerActivity : GameActivity() {
 
     @Suppress("unused")
     // Used by Rust
-    private fun getClipboardText(): String {
-        return try {
-            val clip = clipboard?.primaryClip
-            if (clip != null && clip.itemCount > 0) {
-                clip.getItemAt(0).coerceToText(this).toString()
-            } else {
-                ""
-            }
-        } catch (e: Exception) {
-            Log.w("ruffle", "Couldn't read the clipboard", e)
+    private fun getClipboardText(): String = try {
+        val clip = clipboard?.primaryClip
+        if (clip != null && clip.itemCount > 0) {
+            clip.getItemAt(0).coerceToText(this).toString()
+        } else {
             ""
         }
+    } catch (e: Exception) {
+        Log.w("ruffle", "Couldn't read the clipboard", e)
+        ""
     }
 
     @Suppress("unused")
