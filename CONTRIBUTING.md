@@ -12,6 +12,7 @@
       * [Use emulators!](#use-emulators)
     * [Troubleshooting](#troubleshooting)
       * ["error: Error detecting NDK version for path"](#error-error-detecting-ndk-version-for-path)
+      * [The app aborts on start on Android 6.0](#the-app-aborts-on-start-on-android-60)
   * [Code guidelines](#code-guidelines)
     * [Rust](#rust)
     * [Kotlin](#kotlin)
@@ -58,6 +59,12 @@ full paths of the (sometimes API level-specific) `clang`, `clang++`, and `llvm-a
 
 #### "error: Error detecting NDK version for path"
 This means your `ANDROID_NDK_ROOT` environment variable is missing or incorrect.
+
+#### The app aborts on start on Android 6.0
+The native part of `GameActivity` is built from a patched copy in `vendor/android-games-sdk`
+(see the README there), which `.cargo/config.toml` points `android-activity` to. Cargo doesn't
+notice when that switch happens in an existing build directory, so if you built before it was
+added, run `cargo clean -p android-activity` once.
 
 ## Code guidelines
 We have strict guidelines about trivial code quality matters (formatting and easily checkable lints).
