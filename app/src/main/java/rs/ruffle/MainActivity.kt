@@ -20,7 +20,9 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             RuffleTheme {
-                RuffleNavHost(recentFiles = recentFiles, openSwf = { openSwf(it) })
+                // (Only one screen, so no navigation library: its current version needs
+                // Android 7.)
+                SelectSwfRoute(recentFiles = recentFiles, openSwf = { openSwf(it) })
             }
         }
     }
