@@ -490,6 +490,8 @@ pub struct OpenSlesOutput {
     queue: SlBufferQueueItf,
     /// Allocated with `Box`, and freed in `drop` after the player is destroyed.
     callback_data: NonNull<CallbackData>,
+    /// Whether it's playing (so buffers may be enqueued by the callback at any time).
+    playing: bool,
     /// Must be released after the objects above are destroyed (fields are dropped
     /// after `Drop::drop` runs).
     engine: EngineRef,
@@ -520,6 +522,7 @@ impl OpenSlesOutput {
             play: ptr::null(),
             queue: ptr::null(),
             callback_data,
+            playing: false,
             engine,
         };
         // On failure, `drop` destroys whatever was created.
@@ -686,13 +689,22 @@ impl OpenSlesOutput {
     }
 
     pub fn start(&mut self) -> Result<(), String> {
+        // While playing, only the callback may fill the queue: if it found the buffers locked
+        // by `fill_queue` here, its buffer would never be refilled.
+        if self.playing {
+            return Ok(());
+        }
         self.fill_queue()?;
-        self.set_play_state(SL_PLAYSTATE_PLAYING, "SetPlayState (playing)")
+        self.set_play_state(SL_PLAYSTATE_PLAYING, "SetPlayState (playing)")?;
+        self.playing = true;
+        Ok(())
     }
 
     pub fn pause(&mut self) -> Result<(), String> {
         // The queued buffers are kept, and played when resuming.
-        self.set_play_state(SL_PLAYSTATE_PAUSED, "SetPlayState (paused)")
+        self.set_play_state(SL_PLAYSTATE_PAUSED, "SetPlayState (paused)")?;
+        self.playing = false;
+        Ok(())
     }
 
     /// Returns why the player has to be recreated, if it does. Cheap if nothing is wrong.
