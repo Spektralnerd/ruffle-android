@@ -3,6 +3,7 @@ package rs.ruffle
 import android.content.ActivityNotFoundException
 import android.content.res.Configuration
 import android.net.Uri
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -345,7 +346,11 @@ fun PickSwfButton(onSelect: (uri: Uri) -> Unit) {
             try {
                 launcher.launch(arrayOf("*/*"))
             } catch (e: ActivityNotFoundException) {
-                fallbackLauncher.launch("*/*")
+                try {
+                    fallbackLauncher.launch("*/*")
+                } catch (fallbackNotFound: ActivityNotFoundException) {
+                    Log.w("ruffle", "No app to pick files with", fallbackNotFound)
+                }
             }
         },
         modifier = Modifier
