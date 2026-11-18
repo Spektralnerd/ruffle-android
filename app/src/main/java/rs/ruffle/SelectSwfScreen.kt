@@ -1,5 +1,6 @@
 package rs.ruffle
 
+import android.content.ActivityNotFoundException
 import android.content.res.Configuration
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -328,15 +329,24 @@ fun PickSwfButton(onSelect: (uri: Uri) -> Unit) {
             onSelect(it)
         }
     }
+    // Some devices (e.g. TV boxes) have no document picker, only file managers.
+    val fallbackLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
+            if (it != null) {
+                onSelect(it)
+            }
+        }
 
     OutlinedButton(
         onClick = {
-            launcher.launch(
-                // Ideally "application/x-shockwave-flash" would be
-                // used here, but Android doesn't recognize many
-                // downloaded .swf files as such for some reason... :/
-                arrayOf("*/*")
-            )
+            // Ideally "application/x-shockwave-flash" would be
+            // used here, but Android doesn't recognize many
+            // downloaded .swf files as such for some reason... :/
+            try {
+                launcher.launch(arrayOf("*/*"))
+            } catch (e: ActivityNotFoundException) {
+                fallbackLauncher.launch("*/*")
+            }
         },
         modifier = Modifier
             .width(320.dp)

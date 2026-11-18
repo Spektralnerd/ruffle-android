@@ -1,5 +1,5 @@
 use jni::objects::{
-    JByteArray, JClass, JIntArray, JMethodID, JObject, JObjectArray, JString, JValue, ReleaseMode,
+    JByteArray, JClass, JMethodID, JObject, JObjectArray, JString, JValue, ReleaseMode,
 };
 use jni::signature::{Primitive, ReturnType};
 use jni::{jni_sig, jni_str, Env};
@@ -18,7 +18,6 @@ pub struct JavaInterface {
     get_swf_bytes: JMethodID,
     get_swf_uri: JMethodID,
     get_trace_output: JMethodID,
-    get_loc_in_window: JMethodID,
     get_android_data_storage_dir: JMethodID,
     get_swf_display_name: JMethodID,
     on_movie_loaded: JMethodID,
@@ -125,20 +124,6 @@ impl JavaInterface {
         let string_object = unsafe { env.as_cast_unchecked::<JString>(&object) };
         let url = string_object.try_to_string(env).unwrap();
         Some(url.into())
-    }
-
-    pub fn get_loc_in_window(env: &mut Env, this: &JObject) -> (i32, i32) {
-        let result = unsafe {
-            env.call_method_unchecked(this, Self::get().get_loc_in_window, ReturnType::Array, &[])
-        };
-        let object = result
-            .expect("getLocInWindow() must never throw")
-            .l()
-            .unwrap();
-        let arr = unsafe { JIntArray::from_raw(env, object.into_raw()) };
-        let elements = unsafe { arr.get_elements(env, ReleaseMode::NoCopyBack).unwrap() };
-        let data = unsafe { std::slice::from_raw_parts(elements.as_ptr(), elements.len()) };
-        (data[0], data[1])
     }
 
     pub fn get_android_data_storage_dir(env: &mut Env, this: &JObject) -> PathBuf {
@@ -296,9 +281,6 @@ impl JavaInterface {
                     jni_sig!("()Ljava/lang/String;"),
                 )
                 .expect("getTraceOutput must exist"),
-            get_loc_in_window: env
-                .get_method_id(class, jni_str!("getLocInWindow"), jni_sig!("()[I"))
-                .expect("getLocInWindow must exist"),
             get_android_data_storage_dir: env
                 .get_method_id(
                     class,

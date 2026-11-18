@@ -1,7 +1,9 @@
 package rs.ruffle
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
+import android.util.Log
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -19,6 +21,7 @@ data class RecentFile(
  * Favorites are kept until they are removed, the rest only the last [MAX_HISTORY] ones.
  */
 class RecentFiles(context: Context) {
+    private val context = context.applicationContext
     private val prefs = context.getSharedPreferences("recent_files", Context.MODE_PRIVATE)
 
     /** Favorites first, then the most recently opened. */
@@ -48,8 +51,9 @@ class RecentFiles(context: Context) {
         val existing = items.find { it.uri == uri.toString() }
         val others = items.filter { it.uri != uri.toString() }
         val updated = RecentFile(uri.toString(), name, existing?.favorite ?: false, now)
-        val history = others.filter { !it.favorite }.take(MAX_HISTORY - 1)
-        save(listOf(updated) + others.filter { it.favorite } + history)
+        val history = others.filter { !it.favorite }
+        save(listOf(updated) + others.filter { it.favorite } + history.take(MAX_HISTORY - 1))
+        releasePermissions(history.drop(MAX_HISTORY - 1))
     }
 
     fun setFavorite(uri: String, favorite: Boolean) {
@@ -57,12 +61,37 @@ class RecentFiles(context: Context) {
     }
 
     fun remove(uri: String) {
-        save(load().filter { it.uri != uri })
+        val (removed, kept) = load().partition { it.uri == uri }
+        save(kept)
+        releasePermissions(removed)
     }
 
     /** Removes everything but the favorites. */
     fun clearHistory() {
-        save(load().filter { it.favorite })
+        val (kept, removed) = load().partition { it.favorite }
+        save(kept)
+        releasePermissions(removed)
+    }
+
+    /**
+     * Gives up the lasting permissions to read files that are no longer in the list.
+     * Android only keeps a limited number of them per app, dropping the oldest ones.
+     */
+    private fun releasePermissions(items: List<RecentFile>) {
+        for (item in items) {
+            val uri = Uri.parse(item.uri)
+            if (uri.scheme == "content") {
+                try {
+                    context.contentResolver.releasePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                } catch (e: SecurityException) {
+                    // There was no lasting permission for it.
+                    Log.d("ruffle", "No permission to release for $uri", e)
+                }
+            }
+        }
     }
 
     private fun save(items: List<RecentFile>) {

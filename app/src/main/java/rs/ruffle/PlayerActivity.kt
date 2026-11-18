@@ -91,19 +91,9 @@ class PlayerActivity : GameActivity() {
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
     }
 
-    private var loc = IntArray(2)
-
     @Suppress("unused")
     // Handle of an EventLoopProxy over in rust-land
     private val eventLoopHandle: Long = 0
-
-    @Suppress("unused")
-    // Used by Rust
-    private val locInWindow: IntArray
-        get() {
-            mSurfaceView.getLocationInWindow(loc)
-            return loc
-        }
 
     @Suppress("unused")
     // Used by Rust

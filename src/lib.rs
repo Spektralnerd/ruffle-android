@@ -465,16 +465,16 @@ fn handle_motion_event(
     window: &NativeWindow,
     event: &android_activity::input::MotionEvent,
 ) -> InputStatus {
+    // GameActivity reports the coordinates relative to the surface view already.
     let pointer = event.pointer_at_index(event.pointer_index());
-    let (loc_x, loc_y) = get_loc_in_window(app);
     let Ok((view_width, view_height)) = get_view_size(app) else {
         return InputStatus::Unhandled;
     };
     if view_width <= 0 || view_height <= 0 {
         return InputStatus::Unhandled;
     }
-    let x = (pointer.x() as f64 - loc_x as f64) * window.width() as f64 / view_width as f64;
-    let y = (pointer.y() as f64 - loc_y as f64) * window.height() as f64 / view_height as f64;
+    let x = pointer.x() as f64 * window.width() as f64 / view_width as f64;
+    let y = pointer.y() as f64 * window.height() as f64 / view_height as f64;
 
     let ruffle_event = match event.action() {
         MotionAction::Down | MotionAction::PointerDown => PlayerEvent::MouseDown {
@@ -1027,10 +1027,6 @@ fn native_init(env: &mut Env, class: &JClass, crash_callback: &JObject) -> jni::
 
     JavaInterface::init(env, class);
     Ok(())
-}
-
-fn get_loc_in_window(app: &AndroidApp) -> (i32, i32) {
-    with_activity(app, JavaInterface::get_loc_in_window).unwrap_or((0, 0))
 }
 
 fn get_view_size(app: &AndroidApp) -> Result<(i32, i32), Box<dyn std::error::Error>> {
