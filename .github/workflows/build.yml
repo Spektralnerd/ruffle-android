@@ -152,6 +152,8 @@ jobs:
     needs: build-native-libs
     runs-on: ubuntu-latest
     strategy:
+      # Test every Android version even if one fails.
+      fail-fast: false
       matrix:
         # 23 is the oldest supported version (Android 6.0).
         api-level: [23, 26, 36]
@@ -208,9 +210,10 @@ jobs:
           api-level: ${{ matrix.api-level }}
           arch: x86_64
           emulator-options: -no-window -gpu swangle -no-snapshot -noaudio -no-boot-anim
+          # On failure, show the app's log and any crash, as the test report doesn't include them.
           script: |
             adb shell settings put secure immersive_mode_confirmations confirmed
-            ./gradlew connectedCheck
+            ./gradlew connectedCheck || (adb logcat -d -v threadtime | grep -E -i 'ruffle|AndroidRuntime|DEBUG|libc|linker|GameActivity|FATAL|panic|crash' | tail -n 400; exit 1)
 
       - name: Upload Test Report
         uses: actions/upload-artifact@v7
