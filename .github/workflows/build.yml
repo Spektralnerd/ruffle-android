@@ -210,10 +210,12 @@ jobs:
           api-level: ${{ matrix.api-level }}
           arch: x86_64
           emulator-options: -no-window -gpu swangle -no-snapshot -noaudio -no-boot-anim
-          # On failure, show the app's log and any crash, as the test report doesn't include them.
+          # On failure, show the test results and the app's log (with any crash) in the job log.
           script: |
             adb shell settings put secure immersive_mode_confirmations confirmed
-            ./gradlew connectedCheck || (adb logcat -d -v threadtime | grep -E -i 'ruffle|AndroidRuntime|DEBUG|libc|linker|GameActivity|FATAL|panic|crash' | tail -n 400; exit 1)
+            adb logcat -G 16M || true
+            adb logcat -c
+            ./gradlew connectedCheck || (find app/build/outputs -name 'TEST-*.xml' -exec cat {} + ; adb logcat -d -v threadtime | grep -E 'TestRunner|ruffle|GameActivity|AndroidRuntime|DEBUG|libc|linker|panic' | grep -v -E 'AndroidRuntime: (>>>>>>|CheckJNI|Calling main|Shutting down|VM exiting)' | head -n 600; exit 1)
 
       - name: Upload Test Report
         uses: actions/upload-artifact@v7

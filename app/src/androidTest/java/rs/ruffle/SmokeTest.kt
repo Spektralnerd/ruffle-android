@@ -5,6 +5,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.SystemClock
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.matcher.ViewMatchers.assertThat
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -21,6 +22,7 @@ import org.junit.runner.RunWith
 
 private const val BASIC_SAMPLE_PACKAGE = "rs.ruffle"
 private const val LAUNCH_TIMEOUT = 5000L
+private const val TRACE_TIMEOUT = 10000L
 
 @RunWith(AndroidJUnit4::class)
 class SmokeTest {
@@ -74,9 +76,14 @@ class SmokeTest {
 
     @Test
     fun emulatorRunsASwf() {
-        device.waitForWindowUpdate(null, 1000)
         assertThat(device, notNullValue())
 
+        // Starting the player (mostly creating the renderer) can take longer than a second on
+        // the emulator, so wait for the trace instead of a fixed time.
+        val timeoutAt = SystemClock.uptimeMillis() + TRACE_TIMEOUT
+        while (traceOutput.length() == 0L && SystemClock.uptimeMillis() < timeoutAt) {
+            Thread.sleep(100)
+        }
         val trace = traceOutput.readLines()
         assertThat(trace, equalTo(listOf("Hello from Flash!")))
     }
